@@ -10,7 +10,7 @@ By the end of the lab you will have:
 - Encrypted BMP images column-by-column and observed the visual difference between ECB and CBC modes
 - Hashed file data with SHA-256, encrypted the digest with RSA-OAEP, and produced and verified an RSA-PSS signature
 
----
+  --
 
 ## Prerequisites
 
@@ -77,13 +77,9 @@ make clean
 
 The program generates a random 32-byte session key, then encrypts two text files and decrypts them back. Encrypted output is written as Base64 text so it is printable. The decrypted files should be byte-for-byte identical to the originals.
 
-### Task 1-1: Generate a symmetric key
-
-Locate the call to `generate_session_key()` in `main()`. This fills a 32-byte buffer using `RAND_bytes` from OpenSSL. The first 16 bytes become the HMAC key; the last 16 bytes become the AES key. Study `common.h` to understand the `SESSION_KEY_LEN` constant and how the key is laid out.
-
 ### What to observe
 
-After running `./1_encrypt_text` you should see output like:
+After implementing and running `./1_encrypt_text` you should see output like:
 
 ```
 Original byte length: 47
@@ -94,7 +90,7 @@ Note that the encrypted length is always larger than the plaintext. Account for 
 
 Verify that `output/dec_shorttext.txt` and `output/dec_longtext.txt` are identical to their originals. Any mismatch in the key or the token layout will cause HMAC verification to fail and `session_decrypt()` will return NULL.
 
-### Questions to answer
+### Questions to test your understanding
 
 - Why does encrypting the same file twice (with the same key) produce a different `enc_shorttext.txt` each time?
 - What is the minimum possible encrypted length for a 0-byte input?
@@ -114,7 +110,7 @@ This is intentional. By operating on columns rather than the full image at once,
 
 ### What to observe
 
-Open the output images in any image viewer.
+After completing the tasks and running the compiled output, open the output images in any image viewer.
 
 **ECB outputs** (`enc_*_ecb_*.bmp`): The image structure is still partially visible. Regions of the image that have uniform or repeating pixel columns produce identical ciphertext columns, so edges and solid areas remain recognisable. This is the classic ECB weakness.
 
@@ -122,11 +118,7 @@ Open the output images in any image viewer.
 
 **Bottom-up vs top-down**: These differ in which end of the column is processed first. With CBC, this changes which column feeds the IV into the chain, so the two directions produce visually different noise even though the same key is used.
 
-### Task: modify the traversal order
-
-In `enc_img()`, find the loop that iterates over rows within a column. Change the `top_down` flag passed from `main()` and recompile. Observe how this affects the ECB and CBC outputs differently and explain why.
-
-### Questions to answer
+### Questions to test your understanding
 
 - Explain why ECB leaks image structure but CBC does not.
 - If you encrypt the same BMP twice with CBC and the same key and IV, do you get the same output? Why or why not?
@@ -141,44 +133,16 @@ The program generates a fresh RSA-1024 key pair in memory, then performs two sep
 1. `enc_digest`: computes SHA-256 of the file, encrypts the 32-byte digest with the RSA public key (OAEP padding), decrypts it back with the private key, and checks the round-trip
 2. `sign_digest`: signs the raw file data with the RSA private key (PSS padding, SHA-256), then verifies the signature with the public key
 
-### Task 3-1 and 3-2: RSA key generation
-
-Locate the key generation block in `main()`. OpenSSL's EVP API (`EVP_PKEY_CTX_new_id`, `EVP_PKEY_keygen_init`, `EVP_PKEY_CTX_set_rsa_keygen_bits`, `EVP_PKEY_keygen`) produces an `EVP_PKEY *` that holds both the private and public components. You do not need separate objects for the two halves. Study `common.h` to see how `RSA_KEY_BITS`, `RSA_KEY_BYTES`, `RSA_OAEP_CHUNK`, and `RSA_PKCS1_CHUNK` are derived from the 1024-bit key size.
-
-### Task 3-3 and 3-4: SHA-256 hashing
-
-In `enc_digest()`, find `compute_sha256()`. This uses the raw OpenSSL EVP digest API:
-
-```c
-EVP_DigestInit_ex(ctx, EVP_sha256(), NULL);
-EVP_DigestUpdate(ctx, data, len);
-EVP_DigestFinal_ex(ctx, digest, &digest_len);
-```
-
-The output is always exactly 32 bytes regardless of the size of the input file. Verify this by running the program on both `shorttext.txt` and `longtext.txt` and comparing the reported digest lengths.
-
-### Task 3-5 and 3-6: RSA encrypt and decrypt the digest
-
-In `enc_digest()`, the 32-byte digest is encrypted with `rsa_encrypt_block(..., 1 /* OAEP */)` and decrypted back with `rsa_decrypt_block`. The output ciphertext is always `RSA_KEY_BYTES` (128 bytes) regardless of how small the input is, because RSA operates on the full modulus size. Confirm that the Base64 output for "Original hash bytes" and "Decrypted hash bytes" match exactly.
-
-Note that 32 bytes fits within the OAEP limit of 62 bytes (for a 1024-bit key with SHA-256), so no chunking is needed here.
-
-### Task 3-7 and 3-8: Sign and verify
-
-In `sign_digest()`, `sign_message_pss()` from `common.c` signs the full file data directly. Internally it runs SHA-256 on the message and then applies RSA-PSS. You do not need to hash before calling it. The signature is always 128 bytes (one RSA block).
-
-Verification uses the raw EVP API directly in `sign_digest()` rather than going through `verify_message_pss()`, because that wrapper expects an `X509 *` certificate (used in PA2) while here you only have a bare key pair. Read through the verification code and trace exactly how `EVP_DigestVerifyInit`, `EVP_PKEY_CTX_set_rsa_padding`, `EVP_DigestVerifyUpdate`, and `EVP_DigestVerifyFinal` correspond to the steps described in `crypto_reference.md`.
-
 ### What to observe
 
-Run `./3_sign_digest` several times. Notice:
+After competing the tasks here, run `./3_sign_digest` several times. Notice:
 
 - The SHA-256 digest of each file is the same every run (deterministic).
 - The RSA-OAEP encrypted digest is different every run (randomised padding).
 - The PSS signature is different every run (randomised salt).
 - Decryption and verification still succeed every run despite the randomness.
 
-### Questions to ponder
+### Questions to test your understanding
 
 - The digest of `longtext.txt` is the same length as the digest of `shorttext.txt`. Why?
 - OAEP encryption of the 32-byte digest produces 128 bytes. What accounts for the 96 bytes of overhead?
@@ -204,7 +168,7 @@ This lab directly prepares you for Programming Assignment 2. The relationship is
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Part 1: `session_encrypt` / `session_decrypt` | CP2 file transfer (symmetric encryption after key exchange)                                      |
 | Part 2: ECB vs CBC visual analysis            | Background for understanding why CBC is used in CP2                                              |
-| Part 3: RSA sign + verify                     | Authentication Protocol (AP) — server signs the nonce                                            |
+| Part 3: RSA sign + verify                     | Authentication Protocol (AP)                                                                     |
 | Part 3: RSA encrypt + decrypt                 | CP1 file transfer (RSA encrypts file chunks) and CP2 key exchange (RSA encrypts the session key) |
 
 In PA2, `common.c` is compiled alongside your client and server source files unchanged. The same functions you call in this lab (`session_encrypt`, `rsa_encrypt_block`, `sign_message_pss`, `verify_message_pss`, `load_cert_bytes`, `verify_server_cert`) are the ones you will call in your network code.
